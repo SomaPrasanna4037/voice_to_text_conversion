@@ -148,7 +148,8 @@ class SpeechService extends ChangeNotifier {
   String? get selectedDeviceLocaleId => _selectedDeviceLocaleId;
 
   /// True when the user can change the recognition language.
-  bool get canChangeLocale => _isAvailable && !_isListening;
+  /// Currently disabled — the app always uses the system default language.
+  bool get canChangeLocale => false;
 
   /// True when the user is expected to be speaking (or audio is being
   /// played into the mic). Used by the UI to show the right hint.
@@ -181,30 +182,11 @@ class SpeechService extends ChangeNotifier {
     _languages = _buildEntries(deviceLocales);
     _unmatchedDeviceLocales = _computeUnmatchedDeviceLocales(deviceLocales);
 
-    // If the user previously picked a device-only locale but the device
-    // no longer reports it, drop the selection so the dropdown doesn't
-    // hold onto a stale value.
-    if (_selectedDeviceLocaleId != null &&
-        !_unmatchedDeviceLocales.any(
-          (l) => l.localeId == _selectedDeviceLocaleId,
-        )) {
-      // Also check the curated list — the device may have re-installed
-      // the language and it might now match a curated entry, in which
-      // case the dropdown will show it via `_selectedCode` instead.
-      final stillInCurated = _languages.any(
-        (e) =>
-            _selectedDeviceLocaleId == e.config.code ||
-            _selectedDeviceLocaleId == e.config.bcp47 ||
-            _selectedDeviceLocaleId == e.config.sttLocale,
-      );
-      if (!stillInCurated) {
-        _selectedDeviceLocaleId = null;
-      }
-    }
-
+    // Always use the system default language. Don't allow user selection.
+    _selectedDeviceLocaleId = null;
     _selectedCode = _resolveDefaultCode(
       _languages,
-      _selectedCode,
+      null, // Ignore any previously selected code, always use system
       systemLocale?.localeId,
     );
   }
