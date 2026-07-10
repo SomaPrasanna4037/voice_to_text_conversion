@@ -4,12 +4,20 @@ import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
 import android.provider.Settings
+import android.os.Build
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.RecognitionSupportCallback
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.Executors
 
 class MainActivity : FlutterActivity() {
     private val channelName = "voice_to_text_conversion/speech_settings"
+    private val debugChannelName = "voice_to_text_conversion/speech_debug"
+    private val logTag = "SpeechDebug"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -21,6 +29,82 @@ class MainActivity : FlutterActivity() {
                 "openSpeechSettings" -> result.success(openSpeechSettings())
                 else -> result.notImplemented()
             }
+        }
+
+        // Add debug channel for speech recognition support logging
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            debugChannelName
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "debugRecognitionSupport" -> debugRecognitionSupport(result)
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    /**
+     * Debug method to log RecognitionSupport details directly.
+     * Calls onSupportResult which logs the available, installed, and pending
+     * on-device languages.
+     */
+    private fun debugRecognitionSupport(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < 33) {
+            result.success("Debug: API level 33+ required for RecognitionSupport")
+            return
+        }
+
+        try {
+            val context = this
+            if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
+                result.success("Debug: On-device recognition not available")
+                return
+            }
+
+            val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            val recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+
+            recognizer.checkRecognitionSupport(
+                recognizerIntent,
+                Executors.newSingleThreadExecutor(),
+                object : RecognitionSupportCallback {
+                    override fun onSupportResult(recognitionSupport: android.speech.RecognitionSupport) {
+                        Log.d(logTag, "===== RECOGNITION SUPPORT DEBUG =====")
+                        
+                        Log.d(logTag, "onDevice=${recognitionSupport.supportedOnDeviceLanguages}")
+                        Log.d(logTag, "onDevice count=${recognitionSupport.supportedOnDeviceLanguages?.size ?: 0}")
+                        recognitionSupport.supportedOnDeviceLanguages?.forEach { lang ->
+                            Log.d(logTag, "  - OnDevice: $lang")
+                        }
+
+                        Log.d(logTag, "installed=${recognitionSupport.installedOnDeviceLanguages}")
+                        Log.d(logTag, "installed count=${recognitionSupport.installedOnDeviceLanguages?.size ?: 0}")
+                        recognitionSupport.installedOnDeviceLanguages?.forEach { lang ->
+                            Log.d(logTag, "  - Installed: $lang")
+                        }
+
+                        Log.d(logTag, "pending=${recognitionSupport.pendingOnDeviceLanguages}")
+                        Log.d(logTag, "pending count=${recognitionSupport.pendingOnDeviceLanguages?.size ?: 0}")
+                        recognitionSupport.pendingOnDeviceLanguages?.forEach { lang ->
+                            Log.d(logTag, "  - Pending: $lang")
+                        }
+
+                        Log.d(logTag, "===== END DEBUG =====")
+                        
+                        recognizer.destroy()
+                        result.success("Debug: Check logcat with tag 'SpeechDebug' for output")
+                    }
+
+                    override fun onError(error: Int) {
+                        Log.e(logTag, "Error from checkRecognitionSupport: $error")
+                        recognizer.destroy()
+                        result.error("DEBUG_ERROR", "checkRecognitionSupport error: $error", null)
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            Log.e(logTag, "Exception during debug", e)
+            result.error("DEBUG_EXCEPTION", "Exception: ${e.message}", null)
         }
     }
 

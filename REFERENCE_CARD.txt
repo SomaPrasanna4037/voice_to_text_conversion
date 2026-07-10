@@ -1,0 +1,135 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                    SPEECH DEBUG REFERENCE CARD                                  ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+┌─ QUICK START ─────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  1. Add to UI:                                                                  │
+│     SpeechDebugButton()                                                         │
+│                                                                                 │
+│  2. Tap the button                                                              │
+│                                                                                 │
+│  3. View logs:                                                                  │
+│     adb logcat SpeechDebug:* *:S                                                │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ IMPORT ──────────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  import 'package:voice_to_text_conversion/services/speech_debug_helper.dart'; │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ THREE LANGUAGE LISTS ────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  onDevice=[en-US, en-GB, es-ES]      ← What device CAN support               │
+│                                                                                 │
+│  installed=[en-US, en-GB]            ← What's DOWNLOADED                     │
+│                                                                                 │
+│  pending=[es-ES]                     ← What's DOWNLOADING                    │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ LOG VIEWING ─────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  Method 1 (Best):                                                               │
+│    adb logcat SpeechDebug:* *:S                                                 │
+│                                                                                 │
+│  Method 2:                                                                      │
+│    adb logcat | grep SpeechDebug                                                │
+│                                                                                 │
+│  Method 3:                                                                      │
+│    flutter logs --tag SpeechDebug                                               │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ USAGE METHODS ───────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  Widget (Easiest):                                                              │
+│    SpeechDebugButton()                                                          │
+│                                                                                 │
+│  Direct Call:                                                                   │
+│    final result = await speechService.debugRecognitionSupport();               │
+│                                                                                 │
+│  Method Channel:                                                                │
+│    await MethodChannel('voice_to_text_conversion/speech_debug')                │
+│        .invokeMethod('debugRecognitionSupport');                               │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ FILES MODIFIED ──────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  ✏️  android/app/src/main/.../MainActivity.kt    [Added native code]          │
+│  ✏️  lib/services/speech_service.dart            [Added method]               │
+│  ✨  lib/services/speech_debug_helper.dart       [NEW widget]                │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ REQUIREMENTS ────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  ✓ Android 13+ (API 33+)                                                      │
+│  ✓ On-device speech recognition available                                     │
+│  ✓ RECORD_AUDIO permission (already required)                                │
+│  ✓ Real device or modern emulator                                             │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ EXPECTED OUTPUT EXAMPLE ─────────────────────────────────────────────────────┐
+│                                                                                 │
+│  D/SpeechDebug: ===== RECOGNITION SUPPORT DEBUG =====                         │
+│  D/SpeechDebug: onDevice=[en-US, en-GB, es-ES]                                │
+│  D/SpeechDebug: onDevice count=3                                              │
+│  D/SpeechDebug:   - OnDevice: en-US                                           │
+│  D/SpeechDebug:   - OnDevice: en-GB                                           │
+│  D/SpeechDebug:   - OnDevice: es-ES                                           │
+│  D/SpeechDebug: installed=[en-US, en-GB]                                      │
+│  D/SpeechDebug: installed count=2                                             │
+│  D/SpeechDebug:   - Installed: en-US                                          │
+│  D/SpeechDebug:   - Installed: en-GB                                          │
+│  D/SpeechDebug: pending=[]                                                    │
+│  D/SpeechDebug: pending count=0                                               │
+│  D/SpeechDebug: ===== END DEBUG =====                                         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ SCENARIOS ───────────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  ✅ All ready:        onDevice==installed  AND  pending empty                 │
+│  ⏳ Downloading:      Some in pending list                                    │
+│  ❌ Not available:    "On-device recognition not available"                  │
+│  ⚠️  Old device:      "API level 33+ required"                               │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ TROUBLESHOOTING ─────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  No logs?                     →  adb kill-server && adb start-server          │
+│  Button not visible?          →  Check Android 13+ device                    │
+│  App crash?                   →  Verify RECORD_AUDIO permission              │
+│  Channel error?               →  Check method name matches exactly            │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ METHOD CHANNEL ──────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  Channel Name:  "voice_to_text_conversion/speech_debug"                       │
+│  Method Name:   "debugRecognitionSupport"                                     │
+│  Returns:       String (status message)                                       │
+│  Log Tag:       "SpeechDebug"                                                  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ DOCUMENTATION ───────────────────────────────────────────────────────────────┐
+│                                                                                 │
+│  QUICK_START_DEBUG.md           ← Start here (30 seconds)                    │
+│  SPEECH_DEBUG_GUIDE.md          ← Complete technical guide                   │
+│  INTEGRATION_EXAMPLE.md         ← How to integrate into your app            │
+│  CODE_SNIPPETS.md               ← Copy-paste code                            │
+│  DEBUG_IMPLEMENTATION_SUMMARY.md ← Architecture & overview                   │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════════════════════════════════╗
+║  For quick setup, see: QUICK_START_DEBUG.md                                    ║
+║  For full details, see: SPEECH_DEBUG_GUIDE.md                                  ║
+╚════════════════════════════════════════════════════════════════════════════════╝

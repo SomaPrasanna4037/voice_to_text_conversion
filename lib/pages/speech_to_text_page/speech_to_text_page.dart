@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/speech_debug_helper.dart';
 import '../../services/speech_service.dart';
 import 'widgets/availability_card.dart';
 import 'widgets/control_buttons.dart';
@@ -65,9 +66,10 @@ class _SpeechToTextPageState extends State<SpeechToTextPage> with WidgetsBinding
           child: ListenableBuilder(
             listenable: _service,
             builder: (context, _) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                   AvailabilityCard(isAvailable: _service.isAvailable),
                   const SizedBox(height: 16),
                   LocaleDropdown(
@@ -92,7 +94,7 @@ class _SpeechToTextPageState extends State<SpeechToTextPage> with WidgetsBinding
                       onDismiss: _service.clearText,
                     ),
                   ],
-                  const Spacer(),
+                  const SizedBox(height: 16),
                   StatusRow(
                     isListening: _service.isListening,
                     status: _service.status,
@@ -106,7 +108,15 @@ class _SpeechToTextPageState extends State<SpeechToTextPage> with WidgetsBinding
                     onCancel: _service.cancelListening,
                     onClear: _service.clearText,
                   ),
-                ],
+                  const SizedBox(height: 12),
+                  SpeechDebugButton(
+                    speechService: _service,
+                    onDebugResult: (result) {
+                      print('✅ DEBUG RESULT: $result');
+                    },
+                  ),
+                  ],
+                ),
               );
             },
           ),

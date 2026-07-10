@@ -876,4 +876,20 @@ class SpeechService extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  /// Debug method: Calls the native Android code to log RecognitionSupport
+  /// details directly. Check logcat with tag 'SpeechDebug' for the output.
+  /// Only works on Android API 33+ with on-device speech recognition available.
+  Future<String> debugRecognitionSupport() async {
+    if (!Platform.isAndroid) {
+      return 'Debug: Only available on Android';
+    }
+    try {
+      const channel = MethodChannel('voice_to_text_conversion/speech_debug');
+      final result = await channel.invokeMethod<String>('debugRecognitionSupport');
+      return result ?? 'Debug: No result';
+    } on PlatformException catch (e) {
+      return 'Debug error: ${e.message}';
+    }
+  }
 }
