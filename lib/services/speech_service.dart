@@ -824,7 +824,7 @@ class SpeechService extends ChangeNotifier {
       
       if (str.contains(':')) {
         // Format: "ExceptionType: actual message"
-        final parts = str.split(':', 2);
+        final parts = str.split(':');
         if (parts.length > 1 && parts[1].trim().isNotEmpty) {
           raw = parts[1].trim();
         }
