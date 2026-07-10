@@ -58,6 +58,9 @@ final List<LanguageConfig> supportedLanguages = [
   LanguageConfig('lv-LV', 'lv-LV', null),
   LanguageConfig('hr', 'hr-HR', 'hr_HR'),
   LanguageConfig('sl', 'sl-SI', 'sl_SI'),
+  // Tamil: limited on-device support on iOS. Better to mark as cloud-only
+  // so the UI shows it as network-based. Users can still pick it and use
+  // network recognition (on Android it works on-device).
   LanguageConfig('ta', 'ta-IN', 'ta_IN'),
   LanguageConfig('si', 'si-LK', null),
   LanguageConfig('lt-LT', 'lt-LT', 'lt_LT'),
