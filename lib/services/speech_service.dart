@@ -752,13 +752,6 @@ class SpeechService extends ChangeNotifier {
       // with the same locale will fail the same way) — just stop the
       // session and surface the error so the user can pick a
       // different language.
-      // ignore: avoid_print
-      print('SpeechService: startListening listen() threw: $e');
-      print('SpeechService: exception type: ${e.runtimeType}');
-      print('SpeechService: exception toString: ${e.toString()}');
-      if (e is Exception) {
-        print('SpeechService: is Exception');
-      }
       _userInitiatedSession = false;
       _isListening = false;
       _error = _formatStartError(e);
@@ -790,66 +783,52 @@ class SpeechService extends ChangeNotifier {
 
   /// Builds a user-friendly string for a sync exception thrown out of
   /// `_speech.listen()`. The most common case on iOS is
-  /// `ListenFailedException` with a message like
-  /// "Failed to create speech recognizer" — the device has no model
-  /// for the chosen locale.
+  /// `ListenFailedException` which doesn't have a message property.
+  /// We use context-aware error detection based on the selected language.
   String _formatStartError(Object error) {
-    // The speech_to_text plugin throws ListenFailedException on iOS.
-    // Try to extract the underlying message using reflection/type-checking
-    // since ListenFailedException may not have a public message property
-    // in all plugin versions.
     String raw = error.toString();
     
-    // Try multiple extraction methods for different exception types:
-    
-    // 1. For PlatformException (sometimes the plugin wraps it)
+    // Try to extract message from PlatformException if available
     if (error is PlatformException) {
       if (error.message != null && error.message!.isNotEmpty) {
         raw = error.message!;
       } else if (error.code.isNotEmpty) {
         raw = error.code;
       }
-    } else {
-      // 2. For ListenFailedException and other custom exceptions,
-      // try to access the message via runtimeType reflection.
-      // The exception's toString() usually contains the message in the string.
-      // Look for patterns like "Exception: message" or just extract what's there.
-      final str = error.toString();
-      
-      // If the error message is just the class name with no details,
-      // that's the "Instance of 'ListenFailedException'" issue.
-      // In that case, we'll rely on the platform channel error codes
-      // passed through onError callback instead. But if there IS content
-      // after the colon or in parentheses, extract it.
-      
-      if (str.contains(':')) {
-        // Format: "ExceptionType: actual message"
-        final parts = str.split(':');
-        if (parts.length > 1 && parts[1].trim().isNotEmpty) {
-          raw = parts[1].trim();
-        }
-      }
     }
     
-    // Normalize the message: remove numeric codes that iOS appends
-    // (e.g. "error_unknown (300)" -> "error_unknown").
+    // iOS ListenFailedException typically has no message (just class name).
+    // Use context-aware detection: check if the selected language is known
+    // to have limited iOS support.
+    final hasMessageDetail = !raw.startsWith('Instance of');
+    final isRareLanguageOnIOS = _selectedCode != null && 
+        _isRareLanguageOnIOS(_selectedCode!);
+    
+    if (!hasMessageDetail && isRareLanguageOnIOS) {
+      // ListenFailedException with no message, on a rare language → almost
+      // certainly a language availability issue.
+      return 'The selected language isn\'t available on this device. '
+          'Pick a different language from the list, or install the offline '
+          'speech pack in system Settings.';
+    }
+    
+    // For languages with unknown iOS support, we can't be sure if it's the
+    // language or the recognizer, so give a more generic error.
+    if (!hasMessageDetail) {
+      return 'Could not initialize speech recognition for the selected '
+          'language. Try a different language or reconnect the microphone.';
+    }
+    
+    // If we DO have a message, try to parse it.
     final normalized = _normalizeErrorMsg(raw);
     
-    // Log the extracted error for debugging
-    // ignore: avoid_print
-    print('SpeechService: extracted error message: "$raw"');
-    
-    // Check iOS-specific error patterns.
+    // Check for explicit error patterns
     if (raw.contains('Failed to create speech recognizer') ||
         raw.contains('on device recognition is not supported') ||
         raw.contains('error_listen_failed') ||
         raw.contains('error_assets_not_installed') ||
         normalized.contains('error_language_not_supported') ||
-        normalized.contains('error_language_unavailable') ||
-        normalized.contains('error_assets_not_installed') ||
-        // Generic "failed to initialize" pattern
-        raw.contains('initialize') ||
-        raw.contains('recognizer')) {
+        normalized.contains('error_language_unavailable')) {
       return 'The selected language isn\'t available on this device. '
           'Pick a different language from the list, or install the offline '
           'speech pack in system Settings.';
@@ -860,11 +839,35 @@ class SpeechService extends ChangeNotifier {
       return 'No microphone is available. Check that a microphone is '
           'connected and not in use by another app.';
     }
-    if (raw.contains('error_unknown') || raw.contains('error')) {
-      return 'The recognizer failed to initialize for the selected language. '
-          'Try a different language or check your internet connection.';
-    }
     return 'Could not start recognition: $raw';
+  }
+
+  /// Returns true if the currently selected language is known to have
+  /// limited on-device support on iOS.
+  bool _isRareLanguageOnIOS(String? code) {
+    if (!Platform.isIOS || code == null) return false;
+    
+    final entry = _findByCode(code);
+    if (entry == null) return false;
+    
+    // Languages with weak iOS on-device support:
+    // - Tamil: no on-device model on most iOS versions
+    // - Hindi variants: limited support
+    // - Wu/Cantonese: limited support
+    final rareOnIOS = {
+      'ta', // Tamil
+      'ta_IN',
+      'hi', // Hindi
+      'hi-Latn',
+      'hi-IN-translit',
+      'wuu-CN', // Wu Chinese
+      'yue-CN', // Cantonese
+    };
+    
+    final configId = entry.config.code;
+    final configBcp47 = entry.config.bcp47;
+    
+    return rareOnIOS.contains(configId) || rareOnIOS.contains(configBcp47);
   }
 
   /// Stops the active session but keeps what was recognized.
