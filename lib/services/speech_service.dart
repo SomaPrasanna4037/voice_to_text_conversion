@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -730,7 +731,13 @@ class SpeechService extends ChangeNotifier {
           // handle those ourselves in `_handleError` and auto-restart.
           cancelOnError: false,
           partialResults: true,
-          autoPunctuation: false,
+          // Disable autoPunctuation on iOS when the selected locale might
+          // not have reliable on-device support (e.g. Tamil, other rare
+          // languages). When autoPunctuation is enabled, iOS requires the
+          // server-side path, which fails faster with a clear error. By
+          // disabling it, we give the on-device fallback path a better
+          // chance to work.
+          autoPunctuation: _shouldEnableAutoPunctuation(),
           localeId: selectedBcp47,
           listenMode: ListenMode.dictation,
           listenFor: _kListenFor,
@@ -754,18 +761,62 @@ class SpeechService extends ChangeNotifier {
     }
   }
 
+  /// Whether to enable autoPunctuation for the current locale.
+  /// Disabled for locales with limited on-device support on iOS.
+  bool _shouldEnableAutoPunctuation() {
+    if (!Platform.isIOS) return _kAutoPunctuationEnabled;
+    
+    // On iOS, languages with limited on-device models should not enable
+    // autoPunctuation because it forces the server-side path. When that
+    // fails, the error is immediate and confusing. Better to let the
+    // on-device path try first (even if it falls back to network).
+    if (selectedBcp47 == null) return false;
+    
+    final rareOnIOS = {
+      'ta-IN', 'ta_IN', // Tamil — limited on-device support
+      'hi-Latn', 'hi_Latn', // Hindi Transliteration
+      'hi-IN-translit', 'hi_IN_translit',
+      'wuu-CN', 'wuu_CN', // Wu Chinese
+      'yue-CN', 'yue_CN', // Cantonese
+    };
+    
+    return !rareOnIOS.contains(selectedBcp47);
+  }
+
   /// Builds a user-friendly string for a sync exception thrown out of
   /// `_speech.listen()`. The most common case on iOS is
   /// `ListenFailedException` with a message like
   /// "Failed to create speech recognizer" — the device has no model
   /// for the chosen locale.
   String _formatStartError(Object error) {
-    final raw = error.toString();
-    // Plugin's iOS recognizer-creation failure (no model for the locale).
+    // Extract the actual error message. On iOS, the plugin can throw
+    // `ListenFailedException` from the platform channel; we need to
+    // dig into the exception to get the real error details, not just
+    // the class name.
+    String raw = error.toString();
+    
+    // For platform exceptions, try to extract the actual error message
+    // from the exception details (plugin may wrap it as 'code: message').
+    if (error is PlatformException) {
+      if (error.message != null) {
+        raw = error.message!;
+      } else if (error.code.isNotEmpty) {
+        raw = error.code;
+      }
+    }
+    
+    // Normalize the message: remove numeric codes that iOS appends
+    // (e.g. "error_unknown (300)" -> "error_unknown").
+    final normalized = _normalizeErrorMsg(raw);
+    
+    // Check iOS-specific error patterns.
     if (raw.contains('Failed to create speech recognizer') ||
         raw.contains('on device recognition is not supported') ||
         raw.contains('error_listen_failed') ||
-        raw.contains('error_assets_not_installed')) {
+        raw.contains('error_assets_not_installed') ||
+        normalized.contains('error_language_not_supported') ||
+        normalized.contains('error_language_unavailable') ||
+        normalized.contains('error_assets_not_installed')) {
       return 'The selected language isn\'t available on this device. '
           'Pick a different language from the list, or install the offline '
           'speech pack in system Settings.';
@@ -773,6 +824,10 @@ class SpeechService extends ChangeNotifier {
     if (raw.contains('Not enough available inputs')) {
       return 'No microphone is available. Check that a microphone is '
           'connected and not in use by another app.';
+    }
+    if (raw.contains('error_unknown')) {
+      return 'The recognizer failed to initialize for the selected language. '
+          'Try a different language or check your internet connection.';
     }
     return 'Could not start recognition: $raw';
   }
