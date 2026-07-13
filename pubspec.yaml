@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  speech_to_text: ^7.4.0
+  stts: ^1.2.6
 
 dev_dependencies:
   flutter_test:

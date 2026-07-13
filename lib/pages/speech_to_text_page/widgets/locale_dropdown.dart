@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:speech_to_text/speech_to_text.dart' show LocaleName;
 
 import '../../../services/supported_languages.dart';
 
@@ -38,10 +37,10 @@ class LocaleDropdown extends StatelessWidget {
   /// locale id (e.g. `"zh-HK"`).
   final ValueChanged<String>? onDeviceLocaleChanged;
 
-  /// Locales the device's recognizer reports in `speech.locales()` that
+  /// Locales the device's recognizer reports in `getLanguages()` that
   /// do NOT match any curated entry. Shown at the bottom of the
   /// dropdown as a selectable "Default locales" section.
-  final List<LocaleName> deviceLocales;
+  final List<String> deviceLocales;
 
   @override
   Widget build(BuildContext context) {
@@ -152,11 +151,11 @@ class LocaleDropdown extends StatelessWidget {
             icon: Icons.smartphone,
           ),
         ),
-        for (final l in deviceLocales)
+        for (final id in deviceLocales)
           DropdownMenuItem<String>(
-            value: l.localeId,
+            value: id,
             enabled: true,
-            child: _DeviceLocaleRow(locale: l),
+            child: _DeviceLocaleRow(localeId: id),
           ),
       ],
     ];
@@ -216,9 +215,7 @@ class LocaleDropdown extends StatelessWidget {
                               // device-only picks (which look like a
                               // raw device locale id like `zh-HK`).
                               if (onDeviceLocaleChanged != null &&
-                                  deviceLocales.any(
-                                    (l) => l.localeId == value,
-                                  )) {
+                                  deviceLocales.contains(value)) {
                                 onDeviceLocaleChanged!(value);
                               } else {
                                 onChanged(value);
@@ -385,32 +382,29 @@ class _SectionHeader extends StatelessWidget {
 
 /// One selectable row in the "Default locales" section. Shows the
 /// locale's display name (e.g. "Chinese (Hong Kong)") and its raw id
-/// (e.g. `zh-HK`). The id is what gets handed to the recognizer when
-/// the user picks this row.
+/// One selectable row in the "Default locales" section. Shows the
+/// raw locale id (e.g. `zh-HK`) — `stts` does not provide a display
+/// name for device-reported locales, so the id is the only label we
+/// have. The id is what gets handed to the recognizer when the user
+/// picks this row.
 class _DeviceLocaleRow extends StatelessWidget {
-  const _DeviceLocaleRow({required this.locale});
+  const _DeviceLocaleRow({required this.localeId});
 
-  final LocaleName locale;
+  final String localeId;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hintColor = theme.hintColor;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              locale.name.isEmpty ? locale.localeId : locale.name,
+              localeId,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyLarge,
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            locale.localeId,
-            style: theme.textTheme.bodySmall?.copyWith(color: hintColor),
           ),
         ],
       ),
