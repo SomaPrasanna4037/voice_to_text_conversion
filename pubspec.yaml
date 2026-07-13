@@ -1,5 +1,5 @@
 name: voice_to_text_conversion
-description: "A new Flutter project."
+description: "A Flutter proof-of-concept that records audio from the microphone and transcribes it on-device with whisper_kit (OpenAI Whisper via whisper.cpp)."
 publish_to: 'none'
 version: 0.1.0
 
@@ -9,7 +9,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  speech_to_text: ^7.4.0
+  # On-device speech-to-text via OpenAI Whisper (whisper.cpp).
+  # Accepts a WAV file path (16 kHz, 16-bit PCM, mono) and returns the
+  # transcript plus optional timestamped segments.
+  whisper_kit: ^0.3.1
+  # Microphone recorder. We use it in WAV file mode with the exact
+  # 16 kHz / 16-bit / mono config whisper_kit needs.
+  record: ^6.2.1
+  # Runtime microphone permission prompts on iOS/Android.
+  permission_handler: ^12.0.3
+  # Resolves a writable directory for the temporary WAV file.
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:

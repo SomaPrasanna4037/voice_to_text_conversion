@@ -1,21 +1,27 @@
 # voice_to_text_conversion
 
-A Flutter proof-of-concept that demonstrates **voice-to-text** conversion using the
-[`speech_to_text`](https://pub.dev/packages/speech_to_text) plugin
-([csdcorp/speech_to_text](https://github.com/csdcorp/speech_to_text)).
+A Flutter proof-of-concept that records audio from the device microphone and
+transcribes it on-device with [whisper_kit](https://pub.dev/packages/whisper_kit)
+(OpenAI Whisper via [whisper.cpp](https://github.com/ggerganov/whisper.cpp)).
 
-The app lets the user pick a recognition language from a dropdown (populated with
-the locales installed on the device), tap the microphone to start listening, and
-see the recognized text in real time.
+The mic records to a temporary WAV file (16 kHz, 16-bit PCM, mono) using
+[record](https://pub.dev/packages/record), and that file is then handed to
+whisper_kit for transcription. The whole pipeline runs on-device; the Whisper
+model is downloaded once on first use and then cached.
+
+Modeled on the [example app shipped with whisper_kit](https://github.com/CodeSagePath/whisper_kit/tree/master/example),
+but with a live mic input instead of bundled WAV assets.
 
 ## Features
 
-- Initializes the `SpeechToText` plugin and surfaces its availability.
-- Fetches the list of supported locales from the device and renders them in a
-  dropdown so the user can switch recognition language on the fly.
-- Live, partial transcription while listening.
-- Start, stop, cancel, and clear controls.
-- Status and error reporting from the native recognizer.
+- Tap-to-toggle mic control (tap to start, tap again to stop and transcribe).
+- Cancel recording without transcribing.
+- A flat language dropdown with **Auto-detect** plus the most common
+  Whisper-supported languages.
+- Live status line showing idle / recording / transcribing / model-download
+  progress.
+- Friendly error messages for the typed `WhisperKitException` subclasses
+  (model, audio, transcription, permission).
 
 ## Setup
 
@@ -27,16 +33,14 @@ flutter pub get
 
 ### 2. Android
 
-Permissions for `RECORD_AUDIO`, `INTERNET`, and the Bluetooth stack are already
-declared in `android/app/src/main/AndroidManifest.xml`.
-
-If you target `targetSdkVersion` 30 or later, the manifest already contains the
-required `<queries>` block for `android.speech.RecognitionService`.
+The mic permission and internet permission (for the one-time model download) are
+already declared in `android/app/src/main/AndroidManifest.xml`.
 
 ### 3. iOS
 
-`NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription` are
-already added to `ios/Runner/Info.plist`.
+`NSMicrophoneUsageDescription` is already in `ios/Runner/Info.plist`. The
+`NSSpeechRecognitionUsageDescription` key is no longer required because
+whisper_kit does not use Apple's on-device speech recognizer.
 
 ## Running
 
@@ -45,5 +49,6 @@ already added to `ios/Runner/Info.plist`.
 flutter run
 ```
 
-> On the iOS simulator you may need to download a voice from
-> `Settings → Accessibility → Spoken Content → Voices` before recognition works.
+> The first time you tap the mic, whisper_kit will download the
+> Whisper `base` model (~142 MB). The download progress is shown in the status
+> line. After that, transcription runs fully offline.

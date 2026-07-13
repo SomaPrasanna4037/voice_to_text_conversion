@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH"/>
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <!-- whisper_kit downloads the Whisper model on first use;
+         after that, transcription can run offline. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <application
         android:label="voice_to_text_conversion"
         android:name="${applicationName}"

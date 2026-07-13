@@ -47,7 +47,5 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs microphone access to convert your speech into text.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>This app uses speech recognition to convert your speech into text.</string>
 </dict>
 </plist>

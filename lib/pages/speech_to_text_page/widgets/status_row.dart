@@ -1,44 +1,69 @@
 import 'package:flutter/material.dart';
 
-/// Single line showing the current recognizer status. The full error is
-/// surfaced as a tappable warning banner (see [ErrorBanner]) so the message
-/// is never truncated.
+/// Compact status line under the result card. Shows the
+/// human-readable status (recording, transcribing, downloading
+/// model, idle, …) and a colored dot.
 class StatusRow extends StatelessWidget {
   const StatusRow({
     super.key,
-    required this.isListening,
     required this.status,
+    required this.isRecording,
+    required this.isTranscribing,
+    this.downloadProgress,
   });
 
-  final bool isListening;
   final String status;
+  final bool isRecording;
+  final bool isTranscribing;
+  final double? downloadProgress;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final display =
-        isListening ? 'Listening' : (status.isEmpty ? 'Idle' : status);
-    final color = isListening
-        ? Colors.redAccent
-        : theme.colorScheme.onSurfaceVariant;
+
+    final Color color;
+    final IconData icon;
+    if (isRecording) {
+      color = Colors.redAccent;
+      icon = Icons.fiber_manual_record;
+    } else if (isTranscribing) {
+      color = theme.colorScheme.primary;
+      icon = Icons.hourglass_top;
+    } else {
+      color = theme.colorScheme.onSurfaceVariant;
+      icon = Icons.mic_none;
+    }
 
     return Row(
       children: [
-        Icon(
-          isListening ? Icons.mic : Icons.mic_none,
-          color: color,
-          size: 18,
-        ),
+        Icon(icon, color: color, size: 18),
         const SizedBox(width: 6),
-        Text('Status: $display', style: theme.textTheme.bodySmall),
+        Expanded(
+          child: Text(
+            'Status: $status',
+            style: theme.textTheme.bodySmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (downloadProgress != null) ...[
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 80,
+            child: LinearProgressIndicator(
+              value: downloadProgress,
+              minHeight: 4,
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
-/// Tappable banner that shows a short error summary and reveals the full
-/// message in a dialog when tapped. The recognizer error text is long, so we
-/// keep the UI compact and let the user open the full details on demand.
+/// Tappable banner that shows a short error summary and reveals the
+/// full message in a dialog when tapped. The error text can be long,
+/// so we keep the UI compact and let the user open the full details
+/// on demand.
 class ErrorBanner extends StatelessWidget {
   const ErrorBanner({super.key, required this.error, required this.onDismiss});
 
@@ -85,7 +110,7 @@ class ErrorBanner extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Recognition error'),
+        title: const Text('Transcription error'),
         content: SingleChildScrollView(
           child: SelectableText(error),
         ),
