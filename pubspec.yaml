@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   speech_to_text: ^7.4.0
+  flutter_speech_to_text: ^1.2.1
+  provider: ^6.0.0
 
 dev_dependencies:
   flutter_test:
